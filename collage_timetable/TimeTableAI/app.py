@@ -1,17 +1,11 @@
 import os
 import logging
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
+from .extensions import db
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
-
-class Base(DeclarativeBase):
-    pass
-
-db = SQLAlchemy(model_class=Base)
 
 # Create the app
 app = Flask(__name__)
@@ -30,15 +24,9 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 db.init_app(app)
 
 with app.app_context():
-    # Import and create models
-    import models
-    model_classes = models.create_models(db)
-    
-    # Make models available globally
-    globals().update(model_classes)
-    
-    # Import routes
-    import routes
+    # Import models and routes
+    from . import models
+    from . import routes
     
     # Create all tables
     db.create_all()

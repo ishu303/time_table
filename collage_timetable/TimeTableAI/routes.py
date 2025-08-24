@@ -1,11 +1,14 @@
 import os
 import json
-from io import BytesIO
+from io import BytesIO, StringIO
 from flask import render_template, request, redirect, url_for, flash, jsonify, send_file, make_response
 from sqlalchemy import func
-from app import app, db
-# Models are now available globally from app.py
-from simple_solver import SimpleTimetableSolver
+from .app import app, db
+from .models import (
+    Teacher, Course, Section, Room, TimeSlot, Offering, TimetableSlot,
+    TeacherAvailability, RoomAvailability, TimetableGeneration, UserConstraint, WorkloadFile
+)
+from .simple_solver import SimpleTimetableSolver
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -469,8 +472,8 @@ def export_csv():
     timetable_slots = query.order_by(TimeSlot.day_of_week, TimeSlot.period_number).all()
     
     # Create CSV
-    output = BytesIO()
-    writer = csv.writer(output.getvalue().decode().split('\n')[:-1])
+    output = StringIO()
+    writer = csv.writer(output)
     
     # Write header
     writer.writerow(['Day', 'Period', 'Start Time', 'End Time', 'Course Code', 'Course Name', 
@@ -716,8 +719,9 @@ def upload_workload():
             db.session.add(workload_file)
             db.session.commit()
             
-            # Process file in background
-            from workload_processor import process_workload_file
+            # NOTE: This is a synchronous call. For a production environment,
+            # this should be moved to a background worker (e.g., Celery) to avoid blocking the server.
+            from .workload_processor import process_workload_file
             process_workload_file(workload_file.id)
             
             flash('File uploaded successfully! Processing started.', 'success')

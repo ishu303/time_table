@@ -6,8 +6,11 @@ Simplified timetable solver that's more flexible
 import logging
 from typing import Dict, List, Tuple, Optional
 from ortools.sat.python import cp_model
-from app import db
-# Models are available globally from app.py
+from .app import db
+from .models import (
+    Teacher, Course, Section, Room, TimeSlot, Offering, TimetableSlot,
+    TeacherAvailability, RoomAvailability, TimetableGeneration, UserConstraint
+)
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -72,7 +75,8 @@ class SimpleTimetableSolver:
     
     def _load_data(self):
         """Load all necessary data from database"""
-        # Limit to first 20 offerings to make it feasible
+        # NOTE: The solver is simplified and has hardcoded limits for performance.
+        # It only considers the first 20 offerings. This should be adjusted for real-world use.
         self.offerings = Offering.query.join(Course).join(Teacher).join(Section).filter(
             Course.is_active == True,
             Teacher.is_active == True,
@@ -160,6 +164,7 @@ class SimpleTimetableSolver:
         
         # Constraint 1: Each offering must be scheduled at least once (relaxed from exactly sessions_per_week)
         for offering in self.offerings:
+            # NOTE: The number of sessions is limited to a maximum of 3 for simplicity.
             sessions_needed = min(offering.course.sessions_per_week, 3)  # Limit to 3 sessions max
             assignments = []
             
