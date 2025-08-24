@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}Generate Timetable - College Timetable Generator{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="display-4 mb-4">
+            <i data-feather="cpu" class="me-3"></i>
+            Timetable Generation
+        </h1>
+    </div>
+</div>
+
+<!-- Generation Status -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="zap" class="me-2"></i>
+                    Generate New Timetable
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <p class="mb-0">Click the button below to generate a new timetable using the OR-Tools constraint solver. This will clear the existing timetable and create a new optimized schedule.</p>
+                        <small class="text-muted">
+                            <i data-feather="info" class="me-1"></i>
+                            Generation may take several seconds depending on the complexity of constraints.
+                        </small>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <form method="POST" action="{{ url_for('run_generation') }}" id="generateForm">
+                            <button type="submit" class="btn btn-primary btn-lg" id="generateBtn">
+                                <i data-feather="play" class="me-2"></i>
+                                Generate Timetable
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Current Offerings Overview -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="link" class="me-2"></i>
+                    Course Offerings Overview ({{ offerings|length }})
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if offerings %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Teacher</th>
+                                    <th>Course</th>
+                                    <th>Section</th>
+                                    <th>Sessions/Week</th>
+                                    <th>Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for offering in offerings %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ offering.teacher.name }}</strong>
+                                        <br><small class="text-muted">{{ offering.teacher.designation }}</small>
+                                    </td>
+                                    <td>
+                                        <code>{{ offering.course.code }}</code>
+                                        <br><small>{{ offering.course.name }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ offering.section.name }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ offering.course.sessions_per_week }}</span>
+                                    </td>
+                                    <td>
+                                        {% if offering.course.is_online %}
+                                            <span class="badge bg-success">Online</span>
+                                        {% elif offering.course.is_lab %}
+                                            <span class="badge bg-warning">Lab</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Theory</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <div class="bg-light p-3 rounded">
+                                    <h5 class="mb-1">{{ offerings|length }}</h5>
+                                    <small class="text-muted">Total Offerings</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="bg-light p-3 rounded">
+                                    <h5 class="mb-1">{{ offerings|sum(attribute='course.sessions_per_week') }}</h5>
+                                    <small class="text-muted">Total Sessions/Week</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="bg-light p-3 rounded">
+                                    <h5 class="mb-1">{{ offerings|selectattr('course.is_lab')|list|length }}</h5>
+                                    <small class="text-muted">Lab Courses</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="bg-light p-3 rounded">
+                                    <h5 class="mb-1">{{ offerings|selectattr('course.is_online')|list|length }}</h5>
+                                    <small class="text-muted">Online Courses</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i data-feather="alert-circle" style="width: 64px; height: 64px;" class="text-warning mb-3"></i>
+                        <h5 class="text-muted">No Course Offerings Found</h5>
+                        <p class="text-muted">You need to create course offerings before generating a timetable.</p>
+                        <div class="mt-3">
+                            <a href="{{ url_for('teachers') }}" class="btn btn-outline-primary me-2">
+                                <i data-feather="users" class="me-1"></i>
+                                Manage Teachers
+                            </a>
+                            <a href="{{ url_for('courses') }}" class="btn btn-outline-success me-2">
+                                <i data-feather="book" class="me-1"></i>
+                                Manage Courses
+                            </a>
+                            <a href="{{ url_for('sections') }}" class="btn btn-outline-info">
+                                <i data-feather="layers" class="me-1"></i>
+                                Manage Sections
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Generation History -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="activity" class="me-2"></i>
+                    Generation History
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if generations %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date & Time</th>
+                                    <th>Status</th>
+                                    <th>Solver Status</th>
+                                    <th>Total Slots</th>
+                                    <th>Solve Time</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for generation in generations %}
+                                <tr>
+                                    <td>
+                                        {{ generation.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                                    </td>
+                                    <td>
+                                        {% if generation.status == 'success' %}
+                                            <span class="badge bg-success">{{ generation.status.title() }}</span>
+                                        {% elif generation.status == 'failed' %}
+                                            <span class="badge bg-danger">{{ generation.status.title() }}</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">{{ generation.status.title() }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if generation.solver_status %}
+                                            <code>{{ generation.solver_status }}</code>
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if generation.total_slots %}
+                                            <span class="badge bg-info">{{ generation.total_slots }}</span>
+                                        {% else %}
+                                            <span class="text-muted">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if generation.solve_time_seconds %}
+                                            {{ "%.2f"|format(generation.solve_time_seconds) }}s
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if generation.notes %}
+                                            <small class="text-muted">{{ generation.notes[:100] }}{% if generation.notes|length > 100 %}...{% endif %}</small>
+                                        {% else %}
+                                            <span class="text-muted">No notes</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i data-feather="clock" style="width: 64px; height: 64px;" class="text-muted mb-3"></i>
+                        <h5 class="text-muted">No Generation History</h5>
+                        <p class="text-muted">Generate your first timetable to see the history here.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tips and Information -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="lightbulb" class="me-2"></i>
+                    Generation Tips
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i data-feather="check-circle" class="text-success me-2"></i>
+                        Ensure all teachers, courses, and sections are properly configured
+                    </li>
+                    <li class="mb-2">
+                        <i data-feather="check-circle" class="text-success me-2"></i>
+                        Lab courses automatically get consecutive time slots
+                    </li>
+                    <li class="mb-2">
+                        <i data-feather="check-circle" class="text-success me-2"></i>
+                        Teacher availability constraints are respected
+                    </li>
+                    <li class="mb-2">
+                        <i data-feather="check-circle" class="text-success me-2"></i>
+                        The solver optimizes for even distribution of classes
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="settings" class="me-2"></i>
+                    Constraint Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i data-feather="alert-triangle" class="text-warning me-2"></i>
+                        Hard constraints must be satisfied (no conflicts)
+                    </li>
+                    <li class="mb-2">
+                        <i data-feather="star" class="text-info me-2"></i>
+                        Soft constraints are optimized when possible
+                    </li>
+                    <li class="mb-2">
+                        <i data-feather="clock" class="text-primary me-2"></i>
+                        Avoids first and last periods when possible
+                    </li>
+                    <li class="mb-2">
+                        <i data-feather="calendar" class="text-secondary me-2"></i>
+                        Spreads classes evenly across the week
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('generateForm').addEventListener('submit', function(e) {
+    const btn = document.getElementById('generateBtn');
+    const originalText = btn.innerHTML;
+    
+    // Show loading state
+    btn.innerHTML = '<i data-feather="loader" class="me-2 spinner"></i>Generating...';
+    btn.disabled = true;
+    
+    // Add spinner animation
+    const style = document.createElement('style');
+    style.textContent = `
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Re-initialize feather icons
+    feather.replace();
+});
+
+// Show confirmation before generating if there's existing data
+{% if offerings %}
+document.getElementById('generateForm').addEventListener('submit', function(e) {
+    if (!confirm('This will clear the existing timetable and generate a new one. Continue?')) {
+        e.preventDefault();
+        const btn = document.getElementById('generateBtn');
+        btn.innerHTML = '<i data-feather="play" class="me-2"></i>Generate Timetable';
+        btn.disabled = false;
+        feather.replace();
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

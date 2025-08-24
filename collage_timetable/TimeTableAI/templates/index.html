@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - College Timetable Generator{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="display-4 mb-4">
+            <i data-feather="home" class="me-3"></i>
+            Dashboard
+        </h1>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-2">
+        <div class="card bg-primary">
+            <div class="card-body text-center">
+                <i data-feather="users" class="mb-2" style="width: 48px; height: 48px;"></i>
+                <h3 class="card-title">{{ stats.teachers }}</h3>
+                <p class="card-text">Teachers</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-2">
+        <div class="card bg-success">
+            <div class="card-body text-center">
+                <i data-feather="book" class="mb-2" style="width: 48px; height: 48px;"></i>
+                <h3 class="card-title">{{ stats.courses }}</h3>
+                <p class="card-text">Courses</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-2">
+        <div class="card bg-info">
+            <div class="card-body text-center">
+                <i data-feather="layers" class="mb-2" style="width: 48px; height: 48px;"></i>
+                <h3 class="card-title">{{ stats.sections }}</h3>
+                <p class="card-text">Sections</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-2">
+        <div class="card bg-warning">
+            <div class="card-body text-center">
+                <i data-feather="map-pin" class="mb-2" style="width: 48px; height: 48px;"></i>
+                <h3 class="card-title">{{ stats.rooms }}</h3>
+                <p class="card-text">Rooms</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-2">
+        <div class="card bg-secondary">
+            <div class="card-body text-center">
+                <i data-feather="link" class="mb-2" style="width: 48px; height: 48px;"></i>
+                <h3 class="card-title">{{ stats.offerings }}</h3>
+                <p class="card-text">Offerings</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-2">
+        <div class="card bg-dark">
+            <div class="card-body text-center">
+                <i data-feather="grid" class="mb-2" style="width: 48px; height: 48px;"></i>
+                <h3 class="card-title">{{ stats.scheduled_slots }}</h3>
+                <p class="card-text">Scheduled</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Quick Actions -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="zap" class="me-2"></i>
+                    Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('generate_page') }}" class="btn btn-primary">
+                        <i data-feather="cpu" class="me-2"></i>
+                        Generate New Timetable
+                    </a>
+                    
+                    <a href="{{ url_for('timetable') }}" class="btn btn-secondary">
+                        <i data-feather="grid" class="me-2"></i>
+                        View Current Timetable
+                    </a>
+                    
+                    <div class="row">
+                        <div class="col-6">
+                            <a href="{{ url_for('export_pdf') }}" class="btn btn-outline-primary w-100">
+                                <i data-feather="download" class="me-2"></i>
+                                Export PDF
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{{ url_for('export_csv') }}" class="btn btn-outline-secondary w-100">
+                                <i data-feather="file-text" class="me-2"></i>
+                                Export CSV
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Latest Generation Info -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="activity" class="me-2"></i>
+                    Latest Generation
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if latest_generation %}
+                    <div class="row">
+                        <div class="col-6">
+                            <strong>Status:</strong>
+                            <span class="badge {% if latest_generation.status == 'success' %}bg-success{% elif latest_generation.status == 'failed' %}bg-danger{% else %}bg-warning{% endif %}">
+                                {{ latest_generation.status.title() }}
+                            </span>
+                        </div>
+                        <div class="col-6">
+                            <strong>Generated:</strong>
+                            {{ latest_generation.created_at.strftime('%Y-%m-%d %H:%M') }}
+                        </div>
+                        
+                        {% if latest_generation.total_slots %}
+                        <div class="col-6 mt-2">
+                            <strong>Total Slots:</strong>
+                            {{ latest_generation.total_slots }}
+                        </div>
+                        {% endif %}
+                        
+                        {% if latest_generation.solve_time_seconds %}
+                        <div class="col-6 mt-2">
+                            <strong>Solve Time:</strong>
+                            {{ "%.2f"|format(latest_generation.solve_time_seconds) }}s
+                        </div>
+                        {% endif %}
+                        
+                        {% if latest_generation.solver_status %}
+                        <div class="col-12 mt-2">
+                            <strong>Solver Status:</strong>
+                            <code>{{ latest_generation.solver_status }}</code>
+                        </div>
+                        {% endif %}
+                        
+                        {% if latest_generation.notes %}
+                        <div class="col-12 mt-2">
+                            <strong>Notes:</strong>
+                            <p class="text-muted">{{ latest_generation.notes }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">No timetable has been generated yet.</p>
+                    <a href="{{ url_for('generate_page') }}" class="btn btn-primary">
+                        <i data-feather="play" class="me-2"></i>
+                        Generate First Timetable
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Management Overview -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="database" class="me-2"></i>
+                    Data Management
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <a href="{{ url_for('teachers') }}" class="btn btn-outline-primary w-100 mb-2">
+                                <i data-feather="users" class="mb-2 d-block"></i>
+                                Manage Teachers
+                            </a>
+                            <small class="text-muted">{{ stats.teachers }} teachers registered</small>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <a href="{{ url_for('courses') }}" class="btn btn-outline-success w-100 mb-2">
+                                <i data-feather="book" class="mb-2 d-block"></i>
+                                Manage Courses
+                            </a>
+                            <small class="text-muted">{{ stats.courses }} courses available</small>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <a href="{{ url_for('rooms') }}" class="btn btn-outline-warning w-100 mb-2">
+                                <i data-feather="map-pin" class="mb-2 d-block"></i>
+                                Manage Rooms
+                            </a>
+                            <small class="text-muted">{{ stats.rooms }} rooms available</small>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <a href="{{ url_for('sections') }}" class="btn btn-outline-info w-100 mb-2">
+                                <i data-feather="layers" class="mb-2 d-block"></i>
+                                Manage Sections
+                            </a>
+                            <small class="text-muted">{{ stats.sections }} sections active</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Getting Started -->
+{% if stats.teachers == 0 or stats.courses == 0 or stats.sections == 0 or stats.rooms == 0 %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-info" role="alert">
+            <h4 class="alert-heading">
+                <i data-feather="info" class="me-2"></i>
+                Getting Started
+            </h4>
+            <p>To generate a timetable, you need to set up your data first. Run the seed script to populate with sample institutional data:</p>
+            <hr>
+            <p class="mb-0">
+                <code>python seed.py</code>
+            </p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Auto-refresh dashboard every 30 seconds if on dashboard
+    if (window.location.pathname === '/') {
+        setTimeout(() => {
+            location.reload();
+        }, 30000);
+    }
+</script>
+{% endblock %}

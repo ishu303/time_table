@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}Timetable View - College Timetable Generator{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="display-4">
+                <i data-feather="grid" class="me-3"></i>
+                Timetable View
+            </h1>
+            
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('export_pdf', filter_type=filter_type, filter_id=filter_id) }}" class="btn btn-secondary">
+                    <i data-feather="download" class="me-2"></i>
+                    Export PDF
+                </a>
+                <a href="{{ url_for('export_csv', filter_type=filter_type, filter_id=filter_id) }}" class="btn btn-outline-secondary">
+                    <i data-feather="file-text" class="me-2"></i>
+                    Export CSV
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Controls -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('timetable') }}" class="row align-items-end">
+                    <div class="col-md-3">
+                        <label for="filter_type" class="form-label">Filter By</label>
+                        <select class="form-select" id="filter_type" name="filter_type" onchange="updateFilterOptions()">
+                            <option value="section" {% if filter_type == 'section' %}selected{% endif %}>Section</option>
+                            <option value="teacher" {% if filter_type == 'teacher' %}selected{% endif %}>Teacher</option>
+                            <option value="room" {% if filter_type == 'room' %}selected{% endif %}>Room</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label for="filter_id" class="form-label">Select Item</label>
+                        <select class="form-select" id="filter_id" name="filter_id">
+                            <option value="">All Items</option>
+                            
+                            <!-- Section Options -->
+                            <optgroup label="Sections" id="section_options" {% if filter_type != 'section' %}style="display: none;"{% endif %}>
+                                {% for section in sections %}
+                                <option value="{{ section.id }}" {% if filter_type == 'section' and filter_id == section.id %}selected{% endif %}>{{ section.name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            
+                            <!-- Teacher Options -->
+                            <optgroup label="Teachers" id="teacher_options" {% if filter_type != 'teacher' %}style="display: none;"{% endif %}>
+                                {% for teacher in teachers %}
+                                <option value="{{ teacher.id }}" {% if filter_type == 'teacher' and filter_id == teacher.id %}selected{% endif %}>{{ teacher.name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            
+                            <!-- Room Options -->
+                            <optgroup label="Rooms" id="room_options" {% if filter_type != 'room' %}style="display: none;"{% endif %}>
+                                {% for room in rooms %}
+                                <option value="{{ room.id }}" {% if filter_type == 'room' and filter_id == room.id %}selected{% endif %}>{{ room.number }} ({{ room.name or room.room_type }})</option>
+                                {% endfor %}
+                            </optgroup>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i data-feather="filter" class="me-2"></i>
+                            Apply Filter
+                        </button>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <a href="{{ url_for('timetable') }}" class="btn btn-outline-secondary w-100">
+                            <i data-feather="x" class="me-2"></i>
+                            Clear Filter
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Timetable Grid -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="calendar" class="me-2"></i>
+                    Weekly Timetable
+                    {% if filter_id %}
+                        - 
+                        {% if filter_type == 'section' %}
+                            Section: {{ sections|selectattr('id', 'equalto', filter_id)|first|attr('name') }}
+                        {% elif filter_type == 'teacher' %}
+                            Teacher: {{ teachers|selectattr('id', 'equalto', filter_id)|first|attr('name') }}
+                        {% elif filter_type == 'room' %}
+                            Room: {{ rooms|selectattr('id', 'equalto', filter_id)|first|attr('number') }}
+                        {% endif %}
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0 timetable-grid">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="text-center" style="width: 100px;">Period</th>
+                                <th class="text-center">Monday</th>
+                                <th class="text-center">Tuesday</th>
+                                <th class="text-center">Wednesday</th>
+                                <th class="text-center">Thursday</th>
+                                <th class="text-center">Friday</th>
+                                <th class="text-center">Saturday</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for period in range(1, 9) %}
+                            <tr>
+                                <td class="text-center fw-bold bg-secondary text-white">
+                                    <div class="period-info">
+                                        <div>Period {{ period }}</div>
+                                        <small class="text-muted">
+                                            {% if period == 1 %}09:00-09:50
+                                            {% elif period == 2 %}09:50-10:40
+                                            {% elif period == 3 %}10:40-11:30
+                                            {% elif period == 4 %}11:45-12:35
+                                            {% elif period == 5 %}12:35-13:25
+                                            {% elif period == 6 %}14:10-15:00
+                                            {% elif period == 7 %}15:00-15:50
+                                            {% elif period == 8 %}15:50-16:40
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </td>
+                                {% for day in range(6) %}
+                                <td class="timetable-cell" 
+                                    data-day="{{ day }}" 
+                                    data-period="{{ period }}"
+                                    data-timeslot-id="{{ time_slots|selectattr('day_of_week', 'equalto', day)|selectattr('period_number', 'equalto', period)|first|attr('id') if time_slots|selectattr('day_of_week', 'equalto', day)|selectattr('period_number', 'equalto', period)|first else '' }}">
+                                    {% set slot_data = grid_data.get(day, {}).get(period) %}
+                                    {% if slot_data %}
+                                        <div class="timetable-slot {% if slot_data.course.is_lab %}lab-slot{% elif slot_data.course.is_online %}online-slot{% else %}theory-slot{% endif %}"
+                                             data-slot-id="{{ slot_data.slot_id }}"
+                                             data-course-code="{{ slot_data.course.code }}"
+                                             data-teacher-id="{{ slot_data.teacher.id }}"
+                                             data-room-id="{{ slot_data.room.id }}"
+                                             draggable="true">
+                                            <div class="course-code fw-bold">{{ slot_data.course.code }}</div>
+                                            <div class="course-name small">{{ slot_data.course.name[:30] }}{% if slot_data.course.name|length > 30 %}...{% endif %}</div>
+                                            <div class="teacher-name small text-muted">{{ slot_data.teacher.name }}</div>
+                                            <div class="room-info small">
+                                                <i data-feather="map-pin" style="width: 12px; height: 12px;"></i>
+                                                {{ slot_data.room.number }}
+                                            </div>
+                                            {% if filter_type != 'section' %}
+                                                <div class="section-info small text-info">{{ slot_data.section.name }}</div>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            
+                            <!-- Break rows -->
+                            {% if period == 3 %}
+                            <tr class="break-row">
+                                <td class="text-center fw-bold bg-warning text-dark">Break</td>
+                                <td colspan="6" class="text-center bg-warning text-dark">
+                                    <i data-feather="coffee" class="me-2"></i>
+                                    Morning Break (11:30 - 11:45)
+                                </td>
+                            </tr>
+                            {% elif period == 5 %}
+                            <tr class="break-row">
+                                <td class="text-center fw-bold bg-info text-white">Lunch</td>
+                                <td colspan="6" class="text-center bg-info text-white">
+                                    <i data-feather="utensils" class="me-2"></i>
+                                    Lunch Break (13:25 - 14:10)
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Legend -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="info" class="me-2"></i>
+                    Legend
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="legend-box theory-slot me-2"></div>
+                            <span>Theory Classes</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="legend-box lab-slot me-2"></div>
+                            <span>Laboratory Classes</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="legend-box online-slot me-2"></div>
+                            <span>Online Classes</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i data-feather="info" class="me-1"></i>
+                        Drag and drop slots to reschedule classes. Changes are saved automatically.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not grid_data %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-info text-center">
+            <h4 class="alert-heading">
+                <i data-feather="calendar" class="me-2"></i>
+                No Timetable Data Found
+            </h4>
+            <p>There are no scheduled classes for the selected filter criteria.</p>
+            <hr>
+            <p class="mb-0">
+                <a href="{{ url_for('generate_page') }}" class="btn btn-primary">
+                    <i data-feather="cpu" class="me-2"></i>
+                    Generate Timetable
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateFilterOptions() {
+    const filterType = document.getElementById('filter_type').value;
+    const sectionOptions = document.getElementById('section_options');
+    const teacherOptions = document.getElementById('teacher_options');
+    const roomOptions = document.getElementById('room_options');
+    
+    // Hide all optgroups
+    sectionOptions.style.display = 'none';
+    teacherOptions.style.display = 'none';
+    roomOptions.style.display = 'none';
+    
+    // Show relevant optgroup
+    if (filterType === 'section') {
+        sectionOptions.style.display = 'block';
+    } else if (filterType === 'teacher') {
+        teacherOptions.style.display = 'block';
+    } else if (filterType === 'room') {
+        roomOptions.style.display = 'block';
+    }
+    
+    // Reset filter_id
+    document.getElementById('filter_id').value = '';
+}
+
+// Initialize drag and drop
+document.addEventListener('DOMContentLoaded', function() {
+    initializeTimetableDragDrop();
+});
+
+// Feather icons update
+document.addEventListener('DOMContentLoaded', function() {
+    // Re-initialize feather icons after content is loaded
+    setTimeout(() => {
+        feather.replace();
+    }, 100);
+});
+</script>
+{% endblock %}

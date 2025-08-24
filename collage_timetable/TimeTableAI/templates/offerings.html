@@ -1,0 +1,269 @@
+
+
+{% extends "base.html" %}
+
+{% block title %}Offerings - College Timetable Generator{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="display-4">
+                <i data-feather="link" class="me-3"></i>
+                Course Offerings
+            </h1>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addOfferingModal">
+                <i data-feather="plus" class="me-2"></i>
+                Add Offering
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Offerings List -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="list" class="me-2"></i>
+                    Current Offerings ({{ offerings|length }})
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if offerings %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Teacher</th>
+                                    <th>Course</th>
+                                    <th>Section</th>
+                                    <th>Sessions/Week</th>
+                                    <th>Type</th>
+                                    <th>Preferred Room</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for offering in offerings %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ offering.teacher.name }}</strong>
+                                        <br><small class="text-muted">{{ offering.teacher.designation }}</small>
+                                    </td>
+                                    <td>
+                                        <code>{{ offering.course.code }}</code>
+                                        <br><small>{{ offering.course.name }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ offering.section.name }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ offering.course.sessions_per_week }}</span>
+                                    </td>
+                                    <td>
+                                        {% if offering.course.is_online %}
+                                            <span class="badge bg-success">Online</span>
+                                        {% elif offering.course.is_lab %}
+                                            <span class="badge bg-warning">Lab</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Theory</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if offering.room %}
+                                            <span class="badge bg-light text-dark">{{ offering.room.number }}</span>
+                                        {% else %}
+                                            <small class="text-muted">Not assigned</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="editOffering({{ offering.id }}, {{ offering.teacher_id }}, {{ offering.course_id }}, {{ offering.section_id }}, {{ offering.room_id or 'null' }})">
+                                            <i data-feather="edit" class="me-1"></i>
+                                            Edit
+                                        </button>
+                                        <form method="POST" action="{{ url_for('delete_offering', offering_id=offering.id) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this offering?')">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i data-feather="trash-2" class="me-1"></i>
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i data-feather="link" style="width: 64px; height: 64px;" class="text-muted mb-3"></i>
+                        <h5 class="text-muted">No offerings found</h5>
+                        <p class="text-muted">Create your first offering to assign teachers to courses and sections.</p>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addOfferingModal">
+                            <i data-feather="plus" class="me-2"></i>
+                            Add Offering
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Offering Modal -->
+<div class="modal fade" id="addOfferingModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Offering</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_offering') }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="teacher_id" class="form-label">Teacher</label>
+                                <select class="form-select" id="teacher_id" name="teacher_id" required>
+                                    <option value="">Select Teacher</option>
+                                    {% for teacher in teachers %}
+                                    <option value="{{ teacher.id }}">{{ teacher.name }} ({{ teacher.designation }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="course_id" class="form-label">Course</label>
+                                <select class="form-select" id="course_id" name="course_id" required>
+                                    <option value="">Select Course</option>
+                                    {% for course in courses %}
+                                    <option value="{{ course.id }}">{{ course.code }} - {{ course.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="section_id" class="form-label">Section</label>
+                                <select class="form-select" id="section_id" name="section_id" required>
+                                    <option value="">Select Section</option>
+                                    {% for section in sections %}
+                                    <option value="{{ section.id }}">{{ section.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="room_id" class="form-label">Preferred Room (Optional)</label>
+                                <select class="form-select" id="room_id" name="room_id">
+                                    <option value="">No preference</option>
+                                    {% for room in rooms %}
+                                    <option value="{{ room.id }}">{{ room.number }} ({{ room.room_type }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i data-feather="info" class="me-2"></i>
+                        <strong>Note:</strong> An offering represents the assignment of a teacher to teach a specific course to a particular section.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Offering</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Offering Modal -->
+<div class="modal fade" id="editOfferingModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Offering</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="editOfferingForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_teacher_id" class="form-label">Teacher</label>
+                                <select class="form-select" id="edit_teacher_id" name="teacher_id" required>
+                                    {% for teacher in teachers %}
+                                    <option value="{{ teacher.id }}">{{ teacher.name }} ({{ teacher.designation }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_course_id" class="form-label">Course</label>
+                                <select class="form-select" id="edit_course_id" name="course_id" required>
+                                    {% for course in courses %}
+                                    <option value="{{ course.id }}">{{ course.code }} - {{ course.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_section_id" class="form-label">Section</label>
+                                <select class="form-select" id="edit_section_id" name="section_id" required>
+                                    {% for section in sections %}
+                                    <option value="{{ section.id }}">{{ section.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_room_id" class="form-label">Preferred Room (Optional)</label>
+                                <select class="form-select" id="edit_room_id" name="room_id">
+                                    <option value="">No preference</option>
+                                    {% for room in rooms %}
+                                    <option value="{{ room.id }}">{{ room.number }} ({{ room.room_type }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Offering</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function editOffering(id, teacherId, courseId, sectionId, roomId) {
+    document.getElementById('edit_teacher_id').value = teacherId;
+    document.getElementById('edit_course_id').value = courseId;
+    document.getElementById('edit_section_id').value = sectionId;
+    document.getElementById('edit_room_id').value = roomId || '';
+    
+    document.getElementById('editOfferingForm').action = `/offerings/${id}/edit`;
+    
+    new bootstrap.Modal(document.getElementById('editOfferingModal')).show();
+}
+</script>
+{% endblock %}

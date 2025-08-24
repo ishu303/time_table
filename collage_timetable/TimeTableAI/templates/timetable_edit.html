@@ -1,0 +1,596 @@
+{% extends "base.html" %}
+
+{% block title %}Timetable Editor - College Timetable Generator{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="display-4">
+                <i data-feather="edit-3" class="me-3"></i>
+                Timetable Editor
+            </h1>
+            
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-success" onclick="saveChanges()">
+                    <i data-feather="save" class="me-2"></i>
+                    Save Changes
+                </button>
+                <button type="button" class="btn btn-warning" onclick="checkConflicts()">
+                    <i data-feather="alert-triangle" class="me-2"></i>
+                    Check Conflicts
+                </button>
+                <a href="{{ url_for('timetable') }}" class="btn btn-outline-secondary">
+                    <i data-feather="eye" class="me-2"></i>
+                    View Mode
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Controls -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('timetable_edit') }}" class="row align-items-end">
+                    <div class="col-md-3">
+                        <label for="filter_type" class="form-label">Filter By</label>
+                        <select class="form-select" id="filter_type" name="filter_type" onchange="updateFilterOptions()">
+                            <option value="section" {% if filter_type == 'section' %}selected{% endif %}>Section</option>
+                            <option value="teacher" {% if filter_type == 'teacher' %}selected{% endif %}>Teacher</option>
+                            <option value="room" {% if filter_type == 'room' %}selected{% endif %}>Room</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label for="filter_id" class="form-label">Select Item</label>
+                        <select class="form-select" id="filter_id" name="filter_id">
+                            <option value="">All Items</option>
+                            
+                            <!-- Section Options -->
+                            <optgroup label="Sections" id="section_options" {% if filter_type != 'section' %}style="display: none;"{% endif %}>
+                                {% for section in sections %}
+                                <option value="{{ section.id }}" {% if filter_type == 'section' and filter_id == section.id %}selected{% endif %}>{{ section.name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            
+                            <!-- Teacher Options -->
+                            <optgroup label="Teachers" id="teacher_options" {% if filter_type != 'teacher' %}style="display: none;"{% endif %}>
+                                {% for teacher in teachers %}
+                                <option value="{{ teacher.id }}" {% if filter_type == 'teacher' and filter_id == teacher.id %}selected{% endif %}>{{ teacher.name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            
+                            <!-- Room Options -->
+                            <optgroup label="Rooms" id="room_options" {% if filter_type != 'room' %}style="display: none;"{% endif %}>
+                                {% for room in rooms %}
+                                <option value="{{ room.id }}" {% if filter_type == 'room' and filter_id == room.id %}selected{% endif %}>{{ room.number }} ({{ room.name or room.room_type }})</option>
+                                {% endfor %}
+                            </optgroup>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i data-feather="filter" class="me-2"></i>
+                            Apply Filter
+                        </button>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <a href="{{ url_for('timetable_edit') }}" class="btn btn-outline-secondary w-100">
+                            <i data-feather="x" class="me-2"></i>
+                            Clear Filter
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Conflict Status -->
+<div class="row mb-4" id="conflictStatus" style="display: none;">
+    <div class="col-12">
+        <div class="alert alert-warning" role="alert">
+            <h5 class="alert-heading">
+                <i data-feather="alert-triangle" class="me-2"></i>
+                Conflicts Detected
+            </h5>
+            <div id="conflictDetails">
+                <!-- Conflict details will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Timetable Grid -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="calendar" class="me-2"></i>
+                    Weekly Timetable Editor
+                    {% if filter_id %}
+                        - 
+                        {% if filter_type == 'section' %}
+                            Section: {{ sections|selectattr('id', 'equalto', filter_id)|first|attr('name') }}
+                        {% elif filter_type == 'teacher' %}
+                            Teacher: {{ teachers|selectattr('id', 'equalto', filter_id)|first|attr('name') }}
+                        {% elif filter_type == 'room' %}
+                            Room: {{ rooms|selectattr('id', 'equalto', filter_id)|first|attr('number') }}
+                        {% endif %}
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0 timetable-grid">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="text-center" style="width: 100px;">Period</th>
+                                <th class="text-center">Monday</th>
+                                <th class="text-center">Tuesday</th>
+                                <th class="text-center">Wednesday</th>
+                                <th class="text-center">Thursday</th>
+                                <th class="text-center">Friday</th>
+                                <th class="text-center">Saturday</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for period in range(1, 9) %}
+                            <tr>
+                                <td class="text-center fw-bold bg-secondary text-white">
+                                    <div class="period-info">
+                                        <div>Period {{ period }}</div>
+                                        <small class="text-muted">
+                                            {% if period == 1 %}09:00-09:50
+                                            {% elif period == 2 %}09:50-10:40
+                                            {% elif period == 3 %}10:40-11:30
+                                            {% elif period == 4 %}11:45-12:35
+                                            {% elif period == 5 %}12:35-13:25
+                                            {% elif period == 6 %}14:10-15:00
+                                            {% elif period == 7 %}15:00-15:50
+                                            {% elif period == 8 %}15:50-16:40
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </td>
+                                {% for day in range(6) %}
+                                <td class="timetable-cell edit-mode" 
+                                    data-day="{{ day }}" 
+                                    data-period="{{ period }}"
+                                    data-timeslot-id="{{ time_slots|selectattr('day_of_week', 'equalto', day)|selectattr('period_number', 'equalto', period)|first|attr('id') if time_slots|selectattr('day_of_week', 'equalto', day)|selectattr('period_number', 'equalto', period)|first else '' }}">
+                                    {% set slot_data = grid_data.get(day, {}).get(period) %}
+                                    {% if slot_data %}
+                                        <div class="timetable-slot editable {% if slot_data.course.is_lab %}lab-slot{% elif slot_data.course.is_online %}online-slot{% else %}theory-slot{% endif %}"
+                                             data-slot-id="{{ slot_data.slot_id }}"
+                                             data-course-code="{{ slot_data.course.code }}"
+                                             data-teacher-id="{{ slot_data.teacher.id }}"
+                                             data-room-id="{{ slot_data.room.id }}"
+                                             data-section-id="{{ slot_data.section.id }}"
+                                             draggable="true">
+                                            <div class="course-code fw-bold">{{ slot_data.course.code }}</div>
+                                            <div class="course-name small">{{ slot_data.course.name[:30] }}{% if slot_data.course.name|length > 30 %}...{% endif %}</div>
+                                            <div class="teacher-name small text-muted">{{ slot_data.teacher.name }}</div>
+                                            <div class="room-info small">
+                                                <i data-feather="map-pin" style="width: 12px; height: 12px;"></i>
+                                                {{ slot_data.room.number }}
+                                            </div>
+                                            {% if filter_type != 'section' %}
+                                                <div class="section-info small text-info">{{ slot_data.section.name }}</div>
+                                            {% endif %}
+                                            <div class="edit-controls">
+                                                <button class="btn btn-sm btn-outline-primary" onclick="editSlot({{ slot_data.slot_id }})">
+                                                    <i data-feather="edit-2" style="width: 12px; height: 12px;"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="deleteSlot({{ slot_data.slot_id }})">
+                                                    <i data-feather="trash-2" style="width: 12px; height: 12px;"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <div class="empty-slot" onclick="addSlot({{ day }}, {{ period }})">
+                                            <i data-feather="plus" style="width: 24px; height: 24px;" class="text-muted"></i>
+                                            <small class="text-muted">Add Class</small>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            
+                            <!-- Break rows -->
+                            {% if period == 3 %}
+                            <tr class="break-row">
+                                <td class="text-center fw-bold bg-warning text-dark">Break</td>
+                                <td colspan="6" class="text-center bg-warning text-dark">
+                                    <i data-feather="coffee" class="me-2"></i>
+                                    Morning Break (11:30 - 11:45)
+                                </td>
+                            </tr>
+                            {% elif period == 5 %}
+                            <tr class="break-row">
+                                <td class="text-center fw-bold bg-info text-white">Lunch</td>
+                                <td colspan="6" class="text-center bg-info text-white">
+                                    <i data-feather="utensils" class="me-2"></i>
+                                    Lunch Break (13:25 - 14:10)
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Slot Modal -->
+<div class="modal fade" id="slotModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="slotModalTitle">Add New Class</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="slotForm">
+                <div class="modal-body">
+                    <input type="hidden" id="slot_id" name="slot_id">
+                    <input type="hidden" id="day_of_week" name="day_of_week">
+                    <input type="hidden" id="period_number" name="period_number">
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="offering_id" class="form-label">Course Offering</label>
+                                <select class="form-select" id="offering_id" name="offering_id" required>
+                                    <option value="">Select Offering</option>
+                                    {% for offering in offerings %}
+                                    <option value="{{ offering.id }}">
+                                        {{ offering.course.code }} - {{ offering.course.name }} 
+                                        ({{ offering.teacher.name }} - {{ offering.section.name }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="room_id" class="form-label">Room</label>
+                                <select class="form-select" id="room_id" name="room_id" required>
+                                    <option value="">Select Room</option>
+                                    {% for room in rooms %}
+                                    <option value="{{ room.id }}">{{ room.number }} ({{ room.room_type }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="time_slot_id" class="form-label">Time Slot</label>
+                        <select class="form-select" id="time_slot_id" name="time_slot_id" required>
+                            <option value="">Select Time Slot</option>
+                            {% for time_slot in time_slots %}
+                            <option value="{{ time_slot.id }}">
+                                {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
+                                {{ days[time_slot.day_of_week] }} Period {{ time_slot.period_number }} 
+                                ({{ time_slot.start_time }}-{{ time_slot.end_time }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Global variables
+let draggedSlot = null;
+let originalCell = null;
+let hasUnsavedChanges = false;
+
+// Initialize drag and drop
+document.addEventListener('DOMContentLoaded', function() {
+    initializeTimetableDragDrop();
+    feather.replace();
+});
+
+function updateFilterOptions() {
+    const filterType = document.getElementById('filter_type').value;
+    const sectionOptions = document.getElementById('section_options');
+    const teacherOptions = document.getElementById('teacher_options');
+    const roomOptions = document.getElementById('room_options');
+    
+    // Hide all optgroups
+    sectionOptions.style.display = 'none';
+    teacherOptions.style.display = 'none';
+    roomOptions.style.display = 'none';
+    
+    // Show relevant optgroup
+    if (filterType === 'section') {
+        sectionOptions.style.display = 'block';
+    } else if (filterType === 'teacher') {
+        teacherOptions.style.display = 'block';
+    } else if (filterType === 'room') {
+        roomOptions.style.display = 'block';
+    }
+    
+    // Reset filter_id
+    document.getElementById('filter_id').value = '';
+}
+
+function initializeTimetableDragDrop() {
+    const timetableSlots = document.querySelectorAll('.timetable-slot');
+    const timetableCells = document.querySelectorAll('.timetable-cell');
+    
+    // Make slots draggable
+    timetableSlots.forEach(slot => {
+        slot.addEventListener('dragstart', handleDragStart);
+        slot.addEventListener('dragend', handleDragEnd);
+    });
+    
+    // Make cells drop targets
+    timetableCells.forEach(cell => {
+        cell.addEventListener('dragover', handleDragOver);
+        cell.addEventListener('dragenter', handleDragEnter);
+        cell.addEventListener('dragleave', handleDragLeave);
+        cell.addEventListener('drop', handleDrop);
+    });
+}
+
+function handleDragStart(e) {
+    draggedSlot = this;
+    originalCell = this.parentElement;
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', this.outerHTML);
+}
+
+function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    const cells = document.querySelectorAll('.timetable-cell');
+    cells.forEach(cell => {
+        cell.classList.remove('drag-over', 'drag-invalid');
+    });
+}
+
+function handleDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+}
+
+function handleDragEnter(e) {
+    if (this === originalCell) {
+        return;
+    }
+    
+    if (isValidDrop(this)) {
+        this.classList.add('drag-over');
+    } else {
+        this.classList.add('drag-invalid');
+    }
+}
+
+function handleDragLeave(e) {
+    this.classList.remove('drag-over', 'drag-invalid');
+}
+
+function handleDrop(e) {
+    if (e.stopPropagation) {
+        e.stopPropagation();
+    }
+    
+    if (this === originalCell) {
+        return;
+    }
+    
+    if (isValidDrop(this)) {
+        const slotId = draggedSlot.dataset.slotId;
+        const newTimeSlotId = this.dataset.timeslotId;
+        const newRoomId = draggedSlot.dataset.roomId;
+        
+        // Move the slot
+        moveSlot(slotId, newTimeSlotId, newRoomId);
+        
+        // Update the DOM
+        this.appendChild(draggedSlot);
+        hasUnsavedChanges = true;
+    }
+    
+    return false;
+}
+
+function isValidDrop(cell) {
+    // Check if cell is empty or has compatible content
+    return cell.children.length === 0 || cell.querySelector('.empty-slot');
+}
+
+function moveSlot(slotId, newTimeSlotId, newRoomId) {
+    fetch('/timetable/move', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            slot_id: slotId,
+            new_time_slot_id: newTimeSlotId,
+            new_room_id: newRoomId
+        })
+    }).then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            alert('Error moving slot: ' + data.error);
+            location.reload(); // Reload to reset state
+        }
+    });
+}
+
+function addSlot(day, period) {
+    document.getElementById('slotModalTitle').textContent = 'Add New Class';
+    document.getElementById('slot_id').value = '';
+    document.getElementById('day_of_week').value = day;
+    document.getElementById('period_number').value = period;
+    
+    // Set the time slot based on day and period
+    const timeSlotSelect = document.getElementById('time_slot_id');
+    const timeSlotId = `{{ time_slots|selectattr('day_of_week', 'equalto', 0)|selectattr('period_number', 'equalto', 1)|first|attr('id') }}`;
+    timeSlotSelect.value = timeSlotId;
+    
+    new bootstrap.Modal(document.getElementById('slotModal')).show();
+}
+
+function editSlot(slotId) {
+    document.getElementById('slotModalTitle').textContent = 'Edit Class';
+    document.getElementById('slot_id').value = slotId;
+    
+    // Load slot data
+    fetch(`/timetable/slot/${slotId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('offering_id').value = data.slot.offering_id;
+                document.getElementById('room_id').value = data.slot.room_id;
+                document.getElementById('time_slot_id').value = data.slot.time_slot_id;
+                new bootstrap.Modal(document.getElementById('slotModal')).show();
+            }
+        });
+}
+
+function deleteSlot(slotId) {
+    if (confirm('Are you sure you want to delete this class?')) {
+        fetch(`/timetable/slot/${slotId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error deleting slot: ' + data.error);
+            }
+        });
+    }
+}
+
+function saveChanges() {
+    hasUnsavedChanges = false;
+    alert('Changes saved successfully!');
+}
+
+function checkConflicts() {
+    fetch('/timetable/check-conflicts')
+        .then(response => response.json())
+        .then(data => {
+            if (data.conflicts && data.conflicts.length > 0) {
+                document.getElementById('conflictDetails').innerHTML = data.html;
+                document.getElementById('conflictStatus').style.display = 'block';
+            } else {
+                alert('No conflicts detected!');
+            }
+        });
+}
+
+// Form submission
+document.getElementById('slotForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const slotId = document.getElementById('slot_id').value;
+    
+    const url = slotId ? `/timetable/slot/${slotId}/update` : '/timetable/slot/add';
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    }).then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error saving slot: ' + data.error);
+        }
+    });
+});
+
+// Warn about unsaved changes
+window.addEventListener('beforeunload', function(e) {
+    if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+</script>
+
+<style>
+.timetable-cell.edit-mode {
+    min-height: 120px;
+    position: relative;
+}
+
+.timetable-slot.editable {
+    cursor: move;
+    position: relative;
+}
+
+.edit-controls {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    display: none;
+}
+
+.timetable-slot.editable:hover .edit-controls {
+    display: block;
+}
+
+.empty-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100px;
+    cursor: pointer;
+    border: 2px dashed #dee2e6;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.empty-slot:hover {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.drag-over {
+    background-color: #d4edda;
+    border: 2px solid #28a745;
+}
+
+.drag-invalid {
+    background-color: #f8d7da;
+    border: 2px solid #dc3545;
+}
+
+.dragging {
+    opacity: 0.5;
+}
+</style>
+{% endblock %} 
