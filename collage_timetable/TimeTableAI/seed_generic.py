@@ -8,9 +8,9 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app import app, db
+from .app import app, db
 # Import models after app is initialized
-from app import Teacher, Course, Section, Room, TimeSlot, Offering, TimetableSlot
+from .models import Teacher, Course, Section, Room, TimeSlot, Offering, TimetableSlot
 
 def create_time_slots():
     """Create standard time slots for any college"""
