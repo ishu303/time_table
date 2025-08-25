@@ -3,12 +3,12 @@ import json
 from io import BytesIO, StringIO
 from flask import render_template, request, redirect, url_for, flash, jsonify, send_file, make_response
 from sqlalchemy import func
-from .app import app, db
-from .models import (
+from app import app, db
+from models import (
     Teacher, Course, Section, Room, TimeSlot, Offering, TimetableSlot,
     TeacherAvailability, RoomAvailability, TimetableGeneration, UserConstraint, WorkloadFile
 )
-from .simple_solver import SimpleTimetableSolver
+from simple_solver import SimpleTimetableSolver
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle

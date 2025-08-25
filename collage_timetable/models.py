@@ -1,4 +1,4 @@
-from .extensions import db
+from extensions import db
 from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -6,7 +6,7 @@ from datetime import datetime
 class Teacher(db.Model):
     """Faculty/Teacher model based on workload data"""
     __tablename__ = 'teachers'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     code = db.Column(db.String(20), unique=True)  # Optional faculty code

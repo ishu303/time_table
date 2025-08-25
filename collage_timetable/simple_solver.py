@@ -6,8 +6,8 @@ Simplified timetable solver that's more flexible
 import logging
 from typing import Dict, List, Tuple, Optional
 from ortools.sat.python import cp_model
-from .app import db
-from .models import (
+from app import db
+from models import (
     Teacher, Course, Section, Room, TimeSlot, Offering, TimetableSlot,
     TeacherAvailability, RoomAvailability, TimetableGeneration, UserConstraint
 )
