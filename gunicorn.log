@@ -1,7 +1,0 @@
-[2025-08-24 17:00:57 +0000] [6998] [INFO] Starting gunicorn 23.0.0
-[2025-08-24 17:00:57 +0000] [6998] [INFO] Listening at: http://0.0.0.0:5000 (6998)
-[2025-08-24 17:00:57 +0000] [6998] [INFO] Using worker: sync
-[2025-08-24 17:00:57 +0000] [7125] [INFO] Booting worker with pid: 7125
-[2025-08-24 17:00:57 +0000] [7126] [INFO] Booting worker with pid: 7126
-[2025-08-24 17:00:57 +0000] [7129] [INFO] Booting worker with pid: 7129
-[2025-08-24 17:00:57 +0000] [7133] [INFO] Booting worker with pid: 7133
