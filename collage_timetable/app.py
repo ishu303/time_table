@@ -2,7 +2,7 @@ import os
 import logging
 from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
-from .extensions import db
+from extensions import db
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -25,8 +25,8 @@ db.init_app(app)
 
 with app.app_context():
     # Import models and routes
-    from . import models
-    from . import routes
+    import models
+    import routes
     
     # Create all tables
     db.create_all()
